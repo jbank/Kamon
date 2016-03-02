@@ -28,17 +28,6 @@ import org.fluentd.logger.scala.sender.Sender
 import org.scalatest.mock.EasyMockSugar
 
 class FluentdMetricsSenderSpec extends BaseKamonSpec("fluentd-metrics-sender-spec") with EasyMockSugar {
-  override lazy val config =
-    ConfigFactory.parseString(
-      """
-        |kamon {
-        |  metrics {
-        |    disable-aspectj-weaver-missing-error = true
-        |  }
-        |}
-        |
-      """.stripMargin)
-
   "FluentdMetricsSender" should {
 
     "be able to send counter value in single instrument entity" in new MockingFluentLoggerSenderFixture {

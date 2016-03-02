@@ -17,27 +17,26 @@ package kamon.jdbc
 
 import kamon.util.ConfigTools.Syntax
 
-import akka.actor.{ ExtendedActorSystem, Extension, ExtensionId, ExtensionIdProvider }
+import akka.actor._
 import kamon.Kamon
+import kamon.util.logger.LazyLogger
 
-object Jdbc extends ExtensionId[JdbcExtension] with ExtensionIdProvider {
-  override def lookup(): ExtensionId[_ <: Extension] = Jdbc
-  override def createExtension(system: ExtendedActorSystem): JdbcExtension = new JdbcExtension(system)
+object JdbcExtension {
+  val log = LazyLogger("kamon.jdbc.JdbcExtension")
 
   val SegmentLibraryName = "jdbc"
-}
 
-class JdbcExtension(system: ExtendedActorSystem) extends Kamon.Extension {
-  private val config = system.settings.config.getConfig("kamon.jdbc")
+  private val config = Kamon.config.getConfig("kamon.jdbc")
+  private val dynamic = new ReflectiveDynamicAccess(getClass.getClassLoader)
 
   private val nameGeneratorFQN = config.getString("name-generator")
-  private val nameGenerator: JdbcNameGenerator = system.dynamicAccess.createInstanceFor[JdbcNameGenerator](nameGeneratorFQN, Nil).get
+  private val nameGenerator: JdbcNameGenerator = dynamic.createInstanceFor[JdbcNameGenerator](nameGeneratorFQN, Nil).get
 
   private val slowQueryProcessorClass = config.getString("slow-query-processor")
-  private val slowQueryProcessor: SlowQueryProcessor = system.dynamicAccess.createInstanceFor[SlowQueryProcessor](slowQueryProcessorClass, Nil).get
+  private val slowQueryProcessor: SlowQueryProcessor = dynamic.createInstanceFor[SlowQueryProcessor](slowQueryProcessorClass, Nil).get
 
   private val sqlErrorProcessorClass = config.getString("sql-error-processor")
-  private val sqlErrorProcessor: SqlErrorProcessor = system.dynamicAccess.createInstanceFor[SqlErrorProcessor](sqlErrorProcessorClass, Nil).get
+  private val sqlErrorProcessor: SqlErrorProcessor = dynamic.createInstanceFor[SqlErrorProcessor](sqlErrorProcessorClass, Nil).get
 
   val slowQueryThreshold = config.getFiniteDuration("slow-query-threshold").toMillis
 
@@ -63,9 +62,7 @@ class DefaultJdbcNameGenerator extends JdbcNameGenerator {
 }
 
 class DefaultSqlErrorProcessor extends SqlErrorProcessor {
-  import org.slf4j.LoggerFactory
-
-  val log = LoggerFactory.getLogger(classOf[DefaultSqlErrorProcessor])
+  val log = LazyLogger(classOf[DefaultSqlErrorProcessor])
 
   override def process(sql: String, cause: Throwable): Unit = {
     log.error(s"the query [$sql] failed with exception [${cause.getMessage}]")
@@ -73,9 +70,7 @@ class DefaultSqlErrorProcessor extends SqlErrorProcessor {
 }
 
 class DefaultSlowQueryProcessor extends SlowQueryProcessor {
-  import org.slf4j.LoggerFactory
-
-  val log = LoggerFactory.getLogger(classOf[DefaultSlowQueryProcessor])
+  val log = LazyLogger(classOf[DefaultSlowQueryProcessor])
 
   override def process(sql: String, executionTimeInMillis: Long, queryThresholdInMillis: Long): Unit = {
     log.warn(s"The query [$sql] took $executionTimeInMillis ms and the slow query threshold is $queryThresholdInMillis ms")

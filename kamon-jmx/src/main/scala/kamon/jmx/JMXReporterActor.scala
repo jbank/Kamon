@@ -19,11 +19,10 @@ package kamon.jmx
 import java.lang.management.ManagementFactory
 import javax.management._
 
-import akka.actor.{Actor, Props}
+import akka.actor.{ Actor, Props }
 import kamon.metric.SubscriptionsDispatcher.TickMetricSnapshot
-import kamon.metric.instrument.{Counter, Histogram, InstrumentSnapshot}
-import kamon.metric.{Entity, EntitySnapshot}
-import org.slf4j.LoggerFactory
+import kamon.metric.instrument.{ Counter, Histogram, InstrumentSnapshot }
+import kamon.util.logger.LazyLogger
 
 import scala.collection.concurrent.TrieMap
 
@@ -126,7 +125,7 @@ private object MBeanManager {
 
   private val registeredMBeans = TrieMap.empty[String, AbstractMetricMBean[_]]
 
-  private val log = LoggerFactory.getLogger(getClass)
+  private val log = LazyLogger(getClass)
 
   private[jmx] def createOrUpdateMBean[M <: AbstractMetricMBean[T], T <: InstrumentSnapshot](group: String, name: String, snapshot: T)(implicit buildMetricMBean: (T, ObjectName) ⇒ M): Unit = {
     registeredMBeans.get(name) match {
@@ -146,7 +145,7 @@ private object MBeanManager {
       try {
         mbs.unregisterMBean(name)
       } catch {
-        case e: InstanceNotFoundException ⇒ if (log.isTraceEnabled) log.trace(s"Error unregistering $name", e)
+        case e: InstanceNotFoundException  ⇒ if (log.isTraceEnabled) log.trace(s"Error unregistering $name", e)
         case e: MBeanRegistrationException ⇒ if (log.isDebugEnabled) log.debug(s"Error unregistering $name", e)
       })
     registeredMBeans.clear()
@@ -198,7 +197,7 @@ private class JMXReporterActor extends Actor {
       } {
         metricSnapshot match {
           case hs: Histogram.Snapshot ⇒
-            updateHystogramMetrics(entity.category,  entity.name + "." + metricKey.name, hs)
+            updateHystogramMetrics(entity.category, entity.name + "." + metricKey.name, hs)
           case cs: Counter.Snapshot ⇒
             updateCounterMetrics(entity.category, entity.name + "." + metricKey.name, cs)
         }

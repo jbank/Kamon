@@ -98,6 +98,7 @@ object SimpleRequestProcessor extends App with SimpleRoutingApp with RequestBuil
           traceName("OKFuture") {
             dynamic {
               counter.increment()
+              Kamon.start()
               complete(Future { "OK" })
             }
           }
